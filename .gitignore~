@@ -1,4 +1,4 @@
 db/
 *.pyc/
 models/__pycache__/
-models/.ipynb_checkpoints/
+
