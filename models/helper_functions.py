@@ -2,7 +2,7 @@ import numpy as np
 import pandas as pd
 import scipy.stats as stats
 from matplotlib import cm
-from nltk import word_tokenize
+from nltk import word_tokenize, FreqDist
 import matplotlib.pyplot as plt
 from matplotlib.path import Path
 from matplotlib.spines import Spine
@@ -589,59 +589,34 @@ def plot_learning_curve(estimator, title, X, y, X_test, y_test, ylim=None,
 
     return ax
 
-def chi_squared_test(db, series1, series2, alpha=0.05):
+def freq_stats_corpora(df):
     """
-    Perform a chi squared test between two categorical series.
-    This function is very similar to stats.chi2_contingency()
+    return freq and stats of a corpora
 
     Parameters:
     -----------
-    db: pandas DataFrame
-        input DataFrame
-
-    series1: str
-        name of the categorical variable
-
-    series1: str
-        name of the other categorical variable
-
-    alpha: float
+    df: pandas dataframe
+        input dataframe
 
     Returns:
     --------
-    chi_squared_stat: float
-        computed chi squared value from the dataset
+    freq: dict
 
-    crit: float
-        critical value to indicate the critical region
+    stats: dict
 
-    p_value: float
-        p_value of the test
+    corpora: defaultdict
 
-    conclusion: str
-        conclusion of the test
     """
+    corpora = defaultdict(list)
 
-    tab = pd.crosstab(db[series1], db[series2], margins=True)
-    observed = tab.iloc[:-1,:-1]   # Get table without totals for later use
-    expected = np.outer(tab["All"][:-1], tab.loc["All"][:-1])/db.shape[0]
-    expected = pd.DataFrame(expected)
-    expected.columns = tab.columns[:-1] # rename columns
-    expected.index = tab.index[:-1] # rename index
-    chi_squared_stat = (((observed-expected)**2)/expected).sum().sum()
-    # sum in row and in columns
+    for tags_id, el in df.iterrows():
+        for tag in el.elkey:
+            corpora[tag] += el.elvalue
 
-    # Find the critical value for 95% confidence*
-    crit = stats.chi2.ppf(q=1 - alpha,
-                      df = (observed.shape[0] - 1)*(observed.shape[1] - 1))
-    # Find the p-value
-    p_value = 1 - stats.chi2.cdf(x=chi_squared_stat,
-                             df=(observed.shape[0] - 1)*(observed.shape[1] - 1))
-    if p_value<alpha:
-        concl = ("p_value: %.2E<0.05 (alpha), we reject the null hypothesis."
-                 %p_value)
-    else:
-        concl = ("p_value: %.2E>0.05 (alpha), we accept the null hypothesis."
-                 %p_value)
+    stats, freq = dict(), dict()
 
-    return (chi_squared_stat, crit, p_value, concl )
+    for k,v in corpora.items():
+        freq[k] = FreqDist(v)
+        stats[k] = {'total':len(v), 'unique':len(freq[k].keys())}
+
+    return (freq, stats, corpora)
