@@ -1,0 +1,322 @@
+{
+    "directed": false,
+    "multigraph": false,
+    "graph": {},
+    "nodes": [
+        {
+            "id": ".net"
+        },
+        {
+            "id": "java"
+        },
+        {
+            "id": "asp.net"
+        },
+        {
+            "id": "sql-server"
+        },
+        {
+            "id": "javascript"
+        },
+        {
+            "id": "sql"
+        },
+        {
+            "id": "windows"
+        },
+        {
+            "id": "visual-studio"
+        },
+        {
+            "id": "database"
+        },
+        {
+            "id": "winforms"
+        },
+        {
+            "id": "performance"
+        },
+        {
+            "id": "mysql"
+        },
+        {
+            "id": "version-control"
+        },
+        {
+            "id": "vb.net"
+        },
+        {
+            "id": "unit-testing"
+        },
+        {
+            "id": "asp.net-mvc"
+        },
+        {
+            "id": "visual-studio-2008"
+        },
+        {
+            "id": "testing"
+        },
+        {
+            "id": "winapi"
+        },
+        {
+            "id": "sql-server-2005"
+        },
+        {
+            "id": ".net-3.5"
+        },
+        {
+            "id": "exception"
+        },
+        {
+            "id": "tsql"
+        },
+        {
+            "id": "design"
+        },
+        {
+            "id": "design-patterns"
+        },
+        {
+            "id": "actionscript-3"
+        },
+        {
+            "id": "ide"
+        },
+        {
+            "id": "scripting"
+        },
+        {
+            "id": ".net-2.0"
+        },
+        {
+            "id": "visual-studio-2005"
+        },
+        {
+            "id": "windows-vista"
+        },
+        {
+            "id": "database-design"
+        },
+        {
+            "id": "orm"
+        },
+        {
+            "id": "excel"
+        },
+        {
+            "id": "windows-mobile"
+        },
+        {
+            "id": "date"
+        },
+        {
+            "id": "nhibernate"
+        },
+        {
+            "id": "visual-c++"
+        },
+        {
+            "id": "asp.net-ajax"
+        },
+        {
+            "id": "video"
+        },
+        {
+            "id": "build-automation"
+        },
+        {
+            "id": "ado.net"
+        },
+        {
+            "id": "datetime"
+        },
+        {
+            "id": "api"
+        },
+        {
+            "id": "user-controls"
+        },
+        {
+            "id": "windows-xp"
+        },
+        {
+            "id": "hibernate"
+        },
+        {
+            "id": "sqlite"
+        },
+        {
+            "id": "java-ee"
+        },
+        {
+            "id": "forms"
+        },
+        {
+            "id": "automation"
+        }
+    ],
+    "links": [
+        {
+            "source": ".net",
+            "target": "asp.net"
+        },
+        {
+            "source": ".net",
+            "target": "vb.net"
+        },
+        {
+            "source": ".net",
+            "target": ".net-3.5"
+        },
+        {
+            "source": ".net",
+            "target": ".net-2.0"
+        },
+        {
+            "source": ".net",
+            "target": "ado.net"
+        },
+        {
+            "source": "java",
+            "target": "java-ee"
+        },
+        {
+            "source": "asp.net",
+            "target": "asp.net-mvc"
+        },
+        {
+            "source": "asp.net",
+            "target": "asp.net-ajax"
+        },
+        {
+            "source": "sql-server",
+            "target": "sql-server-2005"
+        },
+        {
+            "source": "javascript",
+            "target": "scripting"
+        },
+        {
+            "source": "sql",
+            "target": "mysql"
+        },
+        {
+            "source": "sql",
+            "target": "tsql"
+        },
+        {
+            "source": "sql",
+            "target": "sqlite"
+        },
+        {
+            "source": "windows",
+            "target": "windows-vista"
+        },
+        {
+            "source": "windows",
+            "target": "windows-mobile"
+        },
+        {
+            "source": "windows",
+            "target": "windows-xp"
+        },
+        {
+            "source": "visual-studio",
+            "target": "visual-studio-2008"
+        },
+        {
+            "source": "visual-studio",
+            "target": "visual-studio-2005"
+        },
+        {
+            "source": "visual-studio",
+            "target": "visual-c++"
+        },
+        {
+            "source": "database",
+            "target": "database-design"
+        },
+        {
+            "source": "winforms",
+            "target": "forms"
+        },
+        {
+            "source": "performance",
+            "target": "forms"
+        },
+        {
+            "source": "version-control",
+            "target": "user-controls"
+        },
+        {
+            "source": "unit-testing",
+            "target": "testing"
+        },
+        {
+            "source": "asp.net-mvc",
+            "target": "asp.net-ajax"
+        },
+        {
+            "source": "visual-studio-2008",
+            "target": "visual-studio-2005"
+        },
+        {
+            "source": "winapi",
+            "target": "api"
+        },
+        {
+            "source": ".net-3.5",
+            "target": ".net-2.0"
+        },
+        {
+            "source": "exception",
+            "target": "excel"
+        },
+        {
+            "source": "design",
+            "target": "design-patterns"
+        },
+        {
+            "source": "design",
+            "target": "database-design"
+        },
+        {
+            "source": "actionscript-3",
+            "target": "scripting"
+        },
+        {
+            "source": "ide",
+            "target": "video"
+        },
+        {
+            "source": "windows-vista",
+            "target": "windows-mobile"
+        },
+        {
+            "source": "windows-vista",
+            "target": "windows-xp"
+        },
+        {
+            "source": "orm",
+            "target": "forms"
+        },
+        {
+            "source": "windows-mobile",
+            "target": "windows-xp"
+        },
+        {
+            "source": "date",
+            "target": "datetime"
+        },
+        {
+            "source": "nhibernate",
+            "target": "hibernate"
+        },
+        {
+            "source": "build-automation",
+            "target": "automation"
+        }
+    ]
+}

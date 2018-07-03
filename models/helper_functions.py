@@ -10,8 +10,13 @@ from matplotlib.projections.polar import PolarAxes
 from matplotlib.projections import register_projection
 from nltk.stem import WordNetLemmatizer
 from sklearn.model_selection import learning_curve, KFold, GridSearchCV
+from sklearn.model_selection import StratifiedKFold
 from sklearn.metrics import r2_score, mean_squared_error
-from collections import defaultdict
+from sklearn.metrics import jaccard_similarity_score
+import math
+from sklearn.pipeline import Pipeline
+from collections import defaultdict, Counter
+from operator import itemgetter
 import pdb
 
 class ModelTrainer(object):
@@ -79,6 +84,180 @@ class ModelTrainer(object):
                                                           y_pred_test)
 
         return fig, ax, y_pred_train, y_pred_test, rmse_score_train, rmse_score_test
+
+class CrossValidation(object):
+    def __init__(self,
+                 classifier,
+                 vectorizer,
+                 params,
+                 binarizer,
+                 G_tags,
+                 n_splits=3,
+                 l_print_errors=False):
+        self.classifier = classifier
+        self.vectorizer = vectorizer
+        self.params = params
+        self.n_splits = n_splits
+        self.binarizer = binarizer
+        self.G_tags = G_tags
+        self.pipeline = None
+        self.l_print_errors = l_print_errors
+
+    def _construct_pipeline(self):
+
+        pipeline = Pipeline([
+            ('vectorizer', self.vectorizer()),
+            ('clf', self.classifier),])
+        self.pipeline = pipeline
+
+
+    def _get_best_tags(self, y_pred, y_pred_proba, n_tags = 1):
+        """
+        assign at least one tag to y_pred that only have 0
+
+        Parameters:
+        -----------
+        y_pred: np array
+            multilabel predicted y values
+
+        y_pred_proba: np array
+            multilabel predicted proba y values
+
+        n_tags: int
+            number of non-zero tags
+
+        Returns:
+        --------
+        y_pred: np array
+            new y_pred for evaluation purpose
+        """
+        idx_y_pred_zeros = np.where(y_pred.sum(axis=1) == 0)[0]
+        best_tags = np.argsort(
+            y_pred_proba[idx_y_pred_zeros])[:, :-(n_tags + 1):-1]
+        y_pred[idx_y_pred_zeros, best_tags.flatten()] = 1
+
+        return y_pred
+
+    def evaluate(self, y_true, y_pred, n_correct=1):
+        """
+        returns accuracy score. In the case of crossval, returns errors in cross
+        evaluation
+
+        Parameters:
+        -----------
+        X: numpy array, or scipy sparse array
+            entry features
+
+        y: numpy array,
+            multilabel y true labels
+
+        classifier: scikit learn model
+            trained model
+
+        binarizer: multi label binarizer object
+            to inverse binarized object to feature names
+
+        G_tags: networkx graph
+            used in tags regrouping
+
+        n_correct: int
+            number of correct prediction to be considered as a correct prediction
+
+        l_crossval: boolean
+            True if print errors
+
+        Returns:
+        --------
+        accuracy_score: float
+
+        errors: array
+            errors
+        """
+
+        accuracy = 0.
+        errors = []
+
+        if self.binarizer is None:
+            raise "Binarizer is None"
+
+        if self.G_tags is None:
+            raise "G_tags is None"
+
+        for index in range(len(y_true)):
+            y_pred_temp = y_pred[index].reshape(1, -1)
+            y_true_temp = y_true[index].reshape(1, -1)
+
+            y_true_tag = self.binarizer.inverse_transform(y_true_temp)
+            y_pred_tag = self.binarizer.inverse_transform(y_pred_temp)
+
+            index_true = np.where(y_true_temp.flatten() == 1)[0]
+            index_pred = np.where(y_pred_temp.flatten() == 1)[0]
+            union_index = list(set(index_true).union(set(index_pred)))
+
+            for i in range(len(y_true_tag)):
+                for j in range(len(y_pred_tag)):
+                    if check_similar_tags(y_true_tag[i], y_pred_tag[j],
+                                          self.G_tags):
+
+                        y_true_temp[0, union_index[i]] = 1
+                        y_pred_temp[0, union_index[j]] = 1
+
+            y_true_eval = y_true_temp[0, union_index]
+            y_pred_eval = y_pred_temp[0, union_index]
+
+            jac_sim = jaccard_similarity_score(
+                y_true_eval, y_pred_eval, normalize=False)
+            # if only half of the total are mislabeled,
+            # then we consider that it's correct
+            if self.l_print_errors:
+                if jac_sim < n_correct:
+                    errors.append(
+                        (self.binarizer.inverse_transform(y_true_temp),
+                         self.binarizer.inverse_transform(y_pred_temp)))
+
+            if jac_sim >= n_correct:
+                accuracy += 1.
+
+        if self.l_print_errors:
+            return accuracy / y_true.shape[0], errors
+        else:
+            # normalize accuracy to the number of samples
+            return accuracy / y_true.shape[0]
+
+    def cv(self, X_train, y_train):
+        kf = KFold(n_splits=self.n_splits)
+
+        key = list(self.params.keys())[0]
+        cv_scores = [[] for i in range(len(self.params[key]))]
+        mean_cv_dict = dict()
+        self._construct_pipeline()
+
+        for idx, value in enumerate(self.params[key]):
+
+            params = {key: value}
+
+            for train_index, test_index in kf.split(X_train, y_train):
+
+                X_train_train = X_train.iloc[train_index]
+                y_train_train = y_train[train_index,:]
+
+                X_train_test = X_train.iloc[test_index]
+                y_train_test = y_train[test_index,:]
+
+                self.pipeline.named_steps['clf'].estimator.set_params(**params)
+                self.pipeline.fit(X_train_train, y_train_train)
+
+                y_pred = self.pipeline.predict(X_train_test)
+                y_pred_proba = self.pipeline.decision_function(X_train_test)
+                y_pred_new = self._get_best_tags(y_pred, y_pred_proba)
+                cv_scores[idx].append(self.evaluate(y_train_test, y_pred_new))
+
+            mean_cv_dict[value] = np.mean(cv_scores[idx])
+
+        sorted_mean_cv_dict = sorted(
+            mean_cv_dict.items(), key=itemgetter(1), reverse=True)
+        self.best_parameter_ = {key: {"value": sorted_mean_cv_dict[0][0],
+                                      "mean": sorted_mean_cv_dict[0][1]}}
 
 class CountEmbeddingVectorizer(object):
     """
@@ -514,10 +693,13 @@ def plot_learning_curve(estimator, title, X, y, X_test, y_test, ylim=None,
     test_scores = [[] for i in range(n_cut)]
     sample_sizes = []
 
-    if scoring =='mse' or scoring =='rmse':
-        score = mean_squared_error
+    if callable(scoring):
+        score = scoring
     else:
-        score = r2_score
+        if scoring =='mse' or scoring =='rmse':
+            score = mean_squared_error
+        elif scoring == 'r2':
+            score = r2_score
 
     #test_size = len(X_test)/len(X)
 
@@ -601,10 +783,13 @@ def freq_stats_corpora(df):
     Returns:
     --------
     freq: dict
+        FreqDist of the word
 
     stats: dict
+        number of total and unique word distributions
 
     corpora: defaultdict
+        corpus of the word
 
     """
     corpora = defaultdict(list)
@@ -620,3 +805,233 @@ def freq_stats_corpora(df):
         stats[k] = {'total':len(v), 'unique':len(freq[k].keys())}
 
     return (freq, stats, corpora)
+
+def ngram(a, n):
+    """
+    returns an ngram of a word
+
+    Parameters:
+    -----------
+    a: string
+        a word
+
+    n: int
+        ngram 2 for bigram, 3 for trigram
+
+    Returns:
+    --------
+    a_list: array
+        list of ngrams of the word
+    """
+
+    a_list = []
+    j = n
+
+    for i in range(0,len(a)-(n-1)):
+        a_list.append(a[i:j])
+        j+=1
+
+    return a_list
+
+def jaccard_distance(a,b):
+    """
+    returns jaccard distance between 2 arrays of ngrams
+
+    Parameters:
+    -----------
+    seta: array
+        ngrams of word a
+    setb: array
+        ngrams of word b
+
+    Returns:
+    --------
+    score_jacc: float
+        jaccard distance of both words
+    """
+
+    union = set(a).union(set(b))
+    inter = set(a).intersection(set(b))
+    len_union = len(union)
+
+    if len(union) == 0:
+        len_union = 1
+    score_jacc = len(inter)/len_union
+
+    return score_jacc
+
+def cosine_similarity(a, b):
+    """
+    returns cosine similarity of ngrams of word a and ngrams of word b
+
+    Parameters:
+    -----------
+    a: array
+        ngrams of word a
+
+    b: array
+        ngrams of word b
+
+    Returns:
+    --------
+    cosine_sim: float
+        cosine similarity of both words
+    """
+
+    intersection = set(a) & set(b)
+    veca = Counter(a)
+    vecb = Counter(b)
+    numerator = sum([veca[x] * vecb[x] for x in intersection])
+
+    sum1 = sum([veca[x]**2 for x in veca.keys()])
+    sum2 = sum([vecb[x]**2 for x in vecb.keys()])
+
+    denominator = math.sqrt(sum1) * math.sqrt(sum2)
+
+    if not denominator:
+        return 0.0
+    else:
+        return float(numerator) / denominator
+
+
+def check_similar_tags(a, b, G_tags):
+    """
+    check if tag a belongs to the same group as tag b
+
+    Parameters:
+    -----------
+    a: string
+        tag a
+
+    b: string
+        tag b
+
+    sim_tags: networkx graph
+        graph of tags
+
+    Returns:
+    --------
+    boolean
+        true if tag a and tag b belong to the same group
+    """
+
+    a_edge_list = [i[1] for i in G_tags.edges(a)]
+    b_edge_list = [i[1] for i in G_tags.edges(b)]
+
+    if (b in a_edge_list) and (a in b_edge_list):
+        return True
+    else:
+        return False
+
+
+def evaluate(y_true, y_pred, binarizer=None, G_tags=None, n_correct=1,
+               l_print_errors=False, check_simiar_tags=None):
+    """
+    returns accuracy score. In the case of crossval, returns errors in cross
+    evaluation
+
+    Parameters:
+    -----------
+    X: numpy array, or scipy sparse array
+        entry features
+
+    y: numpy array,
+        multilabel y true labels
+
+    classifier: scikit learn model
+        trained model
+
+    binarizer: multi label binarizer object
+        to inverse binarized object to feature names
+
+    G_tags: networkx graph
+        used in tags regrouping
+
+    n_correct: int
+        number of correct prediction to be considered as a correct prediction
+
+    l_crossval: boolean
+        True if print errors
+
+    Returns:
+    --------
+    accuracy_score: float
+
+    errors: array
+        errors
+    """
+
+    accuracy = 0.
+    errors = []
+
+    if binarizer is None:
+        raise "Binarizer is None"
+
+    if G_tags is None:
+        raise "G_tags is None"
+
+    for index in range(len(y_true)):
+        y_pred_temp = y_pred[index].reshape(1, -1)
+        y_true_temp = y_true[index].reshape(1, -1)
+
+        y_true_tag = binarizer.inverse_transform(y_true_temp)
+        y_pred_tag = binarizer.inverse_transform(y_pred_temp)
+
+        index_true = np.where(y_true_temp.flatten() == 1)[0]
+        index_pred = np.where(y_pred_temp.flatten() == 1)[0]
+        union_index = list(set(index_true).union(set(index_pred)))
+
+        for i in range(len(y_true_tag)):
+            for j in range(len(y_pred_tag)):
+                if check_similar_tags(y_true_tag[i], y_pred_tag[j], G_tags):
+
+                    y_true_temp[0, union_index[i]] = 1
+                    y_pred_temp[0, union_index[j]] = 1
+
+        y_true_eval = y_true_temp[0, union_index]
+        y_pred_eval = y_pred_temp[0, union_index]
+
+        jac_sim = jaccard_similarity_score(
+            y_true_eval, y_pred_eval, normalize=False)
+        # if only half of the total are mislabeled,
+        # then we consider that it's correct
+        if l_print_errors:
+            if jac_sim < n_correct:
+                errors.append((binarizer.inverse_transform(y_true_temp),
+                               binarizer.inverse_transform(y_pred_temp)))
+
+        if jac_sim >= n_correct:
+            accuracy += 1.
+
+    if l_print_errors:
+        return accuracy / y_true.shape[0], errors
+    else:
+        # normalize accuracy to the number of samples
+        return accuracy / y_true.shape[0]
+
+def get_best_tags(y_pred, y_pred_proba, n_tags=1):
+    """
+    assign at least one tag to y_pred that only have 0
+
+    Parameters:
+    -----------
+    y_pred: np array
+        multilabel predicted y values
+
+    y_pred_proba: np array
+        multilabel predicted proba y values
+
+    n_tags: int
+        number of non-zero tags
+
+    Returns:
+    --------
+    y_pred: np array
+        new y_pred for evaluation purpose
+    """
+    idx_y_pred_zeros  = np.where(y_pred.sum(axis=1)==0)[0]
+    best_tags = np.argsort(
+        y_pred_proba[idx_y_pred_zeros])[:, :-(n_tags + 1):-1]
+    y_pred[idx_y_pred_zeros, best_tags.flatten()] = 1
+
+    return y_pred
