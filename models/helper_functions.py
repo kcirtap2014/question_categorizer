@@ -994,3 +994,42 @@ def deduplication(y_pred_tags, binarizer, G_tags):
         similar_tags_index[y_pred_tags[i]] = temp_array
 
     return similar_tags_index
+
+def H_entropy(x):
+    """
+    returns the information entropy of x, useful for topic pruning
+    high entropy values represent high uncertainties, hence the lower the better
+
+    Parameters:
+    -----------
+    x: np arrays
+
+    Returns:
+    --------
+    entropy: float
+    """
+
+    return -sum(x*np.log2(x))
+
+
+def rpc_score(perplexity, topic_num):
+    """
+    returns rate of perplexity change
+
+    Parameters:
+    -----------
+    perplexity: np arrays
+        perplexity given by LDA
+
+    topic_num: np arrays
+        array of topic num
+
+    Returns:
+    --------
+    rpc: np arrays
+        rate of perplexity change
+    """
+    shape = np.shape(perplexity)
+    t = np.repeat(topic_num, shape[1], axis=-1).reshape(shape)
+
+    return np.absolute((perplexity[1:] - perplexity[:-1]) / (t[1:] - t[:-1]))
