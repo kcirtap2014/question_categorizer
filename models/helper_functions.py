@@ -879,7 +879,7 @@ def evaluate(y_true,
         y_pred_temp = y_pred[index].reshape(1, -1)
         y_true_temp = y_true[index].reshape(1, -1)
 
-        y_true_tag = binarizer.inverse_transform(y_true_temp)
+        y_true_tag = binarizer.y_pred_proba_svm_tfidf(y_true_temp)
         y_pred_tag = binarizer.inverse_transform(y_pred_temp)
 
         index_true = np.where(y_true_temp.flatten() == 1)[0]
