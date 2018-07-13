@@ -1,0 +1,59 @@
+form {
+    margin: 0 auto;
+    width: 400px;
+    height: 400px;
+    font-size: 30px;
+    font-weight: bold;
+    text-align: justify;
+    font-family: 'PT Serif', serif;
+}
+
+fieldset {
+    border-style: hidden;
+}
+
+select {
+    font-size: 14px;
+    border-color:  black;
+    padding: 5px;
+    display: -webkit-box;
+    text-indent: inherit;
+}
+
+input {
+    font-size: 14px;
+    border-color: black;
+    padding-left: 5px;
+    width:fit-content;
+    height:auto;
+    display:-webkit-box;
+    border-radius: 5px;
+    border-width:1px;
+    overflow: visible;
+
+}
+
+input[type="checkbox"] {
+    height: 20px;
+    width: 20px;
+    margin-left: 25px;
+    display:inline-block;
+}
+
+input#submit {
+    font-size: 20px;
+    font-weight: bold;
+    text-align: justify;
+    font-family: 'PT Serif', serif;
+}
+
+a {
+    font-size: 20px;
+    font-weight: normal;
+}
+
+legend {
+    font-size: 40px;
+    font-weight: bolder;
+    text-align: center;
+}

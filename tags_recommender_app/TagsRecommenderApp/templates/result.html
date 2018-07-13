@@ -1,0 +1,60 @@
+{% extends "base.html" %}
+
+{% block corps %}
+<div class="container " >
+<div class="row">
+    <div class="col-lg-8 col-lg-offset-2">
+      {#<div>{{ error }}</div> #}
+
+      {% for message in form.dest.errors %}
+         <div>{{ message }}</div>
+      {% endfor %}
+
+      <form action="{{url_for("result")}}" method = "post">
+         <fieldset>
+            <legend >{{title}}</legend>
+            {{ form.hidden_tag() }}
+
+            <div >
+                {{ form.origin.label }}<br>
+                <a>{{ origin_iata }}</a>
+                <br>
+
+                {{ form.dest.label }} <br>
+                <a>{{ dest_iata }}</a><br>
+                {{ form.carrier.label }} <br>
+                <a>{{ carrier }}</a><br>
+                {{ form.dep_day.label }}<br>
+                <a>{{ date }}</a>
+                <br>
+
+                {{ form.dep_time.label }}<br>
+                <a>{{ time }}</a>
+                <br>
+
+                {{ form.departed.label }}
+
+                {% if departed=="True": %}
+                <input type="checkbox" checked disabled />
+                {% else: %}
+                <input type="checkbox"  disabled />
+                {% endif %}
+                <div>Predicted delay</div>
+                    {% if y_delayed: %}
+                    <a><font color="red">Delayed [{{y_pred}} min (&#xB1;{{rmse_score_test}} min)]</font></a>
+                    {% else: %}
+                    <a><font color="green">On time [{{y_pred}} min (&#xB1;{{rmse_score_test}} min)]</font></a>
+                    {% endif %}
+                <br>
+                {% if not flight_exist:%}
+                    <a style= "font-size:14px;"> <font color="red">Warning: Flight connection does not exist.</font></a>
+                {% endif %}
+
+            </div>
+
+         </fieldset>
+      </form>
+     </div>
+    </div>
+</div>
+{% endblock %}
