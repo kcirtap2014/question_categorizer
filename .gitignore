@@ -1,5 +1,6 @@
 db/
 *.pyc/
+tags_recommender_app/env/
 models/__pycache__/
 models/.ipynb_checkpoints/
 models/G_tags.html
