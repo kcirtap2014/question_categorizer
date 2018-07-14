@@ -4,40 +4,22 @@
 <div class="container " >
 <div class="row">
     <div class="col-lg-8 col-lg-offset-2">
-      {#<div>{{ error }}</div> #}
-
-      {% for message in form.dest.errors %}
-         <div>{{ message }}</div>
-      {% endfor %}
 
       <form action="{{url_for("result")}}" method = "POST">
          <fieldset>
-            <legend >{{title}}</legend>
+            <legend > <img src="{{url_for('static', filename='image/so-logo.png')}}" alt="Stack Overflow"> </legend>
+            <div id="title" class="title">{{ form.title(placeholder="Title goes here...") }}</div>
             {{ form.hidden_tag() }}
 
-            <div >
-               {{ form.origin.label }}<br>
-               {{ form.origin }}
+            <div id="wmd-button-bar"></div>
+            <textarea id="wmd-input" class="wmd-input" placeholder="Ask your question here..."></textarea>
+            <div id="wmd-preview" class="wmd-panel wmd-preview"></div>
 
-               {{ form.dest.label }} <br>
-               {{ form.dest }}
-
-               {{ form.carrier.label }} <br>
-               {{ form.carrier }}
-
-                {{ form.dep_day.label }}<br>
-               {{ form.dep_day }}
-
-                {{ form.dep_time.label }}<br>
-               {{ form.dep_time }}
-
-               {{ form.departed.label }}
-                   <input type="checkbox" name="departed" value=True />
-                   <input type="hidden" name="departed" value=False />
-               <div style="height:1px;font-size:10px;">Check if flight has departed</div>
-
-
-               <br>
+            <script>
+                var converter = Markdown.getSanitizingConverter();
+                var editor = new Markdown.Editor(converter);
+                editor.run();
+            </script>
 
                {{ form.submit }}
             </div>

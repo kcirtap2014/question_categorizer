@@ -12,10 +12,13 @@
 
       <form action="{{url_for("result")}}" method = "post">
          <fieldset>
-            <legend >{{title}}</legend>
+            <legend > <img src="{{url_for('static', filename='image/so-logo.png')}}" alt="Stack Overflow"> </legend>
             {{ form.hidden_tag() }}
+            <a>{{ title }}</a>
+            <br>
+            <a>{{ body }}</a>
 
-            <div >
+            <!--<div >
                 {{ form.origin.label }}<br>
                 <a>{{ origin_iata }}</a>
                 <br>
@@ -50,7 +53,7 @@
                     <a style= "font-size:14px;"> <font color="red">Warning: Flight connection does not exist.</font></a>
                 {% endif %}
 
-            </div>
+            </div>-->
 
          </fieldset>
       </form>

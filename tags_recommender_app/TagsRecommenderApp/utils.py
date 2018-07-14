@@ -3,7 +3,7 @@ import logging as lg
 import numpy as np
 import pdb
 
-from .models import load_joblib, load_data, Airports, Origins, Dests
+#from .models import load_joblib, load_data, Airports, Origins, Dests
 
 def airport_list():
     origin_list = []
@@ -90,7 +90,7 @@ def predict(origin_iata, dest_iata, date, time, departed, carrier):
                     first().degree)
     dest_degree = (Dests.query.filter(Dests.iata==str(dest_iata)).
                   first().degree)
-    
+
     input_vector[input_columns['ORIGIN_DEGREE']] = int.from_bytes(origin_degree,
                                                    byteorder='little')
     input_vector[input_columns['DEST_DEGREE']] = int.from_bytes(dest_degree,
