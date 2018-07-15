@@ -10,7 +10,10 @@ if os.environ.get('DATABASE_URL') is None:
         'origin': 'sqlite:///' + os.path.join(basedir, 'origin.db'),
         'dest': 'sqlite:///' + os.path.join(basedir, 'dest.db')
     }
-    DATABASE_URI = os.path.join(basedir, 'TagsRecommenderApp/static/db/')
+    DATABASE_URI_MODEL = os.path.join(basedir,
+                        'TagsRecommenderApp/static/db/OVR_SVM_model.sav')
+    DATABASE_URI_VECT = os.path.join(basedir,
+                        'TagsRecommenderApp/static/db/vectorizer.pk')
 
 else:
     SQLALCHEMY_DATABASE_URI = os.environ['DATABASE_URL']
@@ -18,4 +21,5 @@ else:
         'origin': os.environ['HEROKU_POSTGRESQL_GOLD_URL'],
         'dest': os.environ['HEROKU_POSTGRESQL_GRAY_URL']
     }
-    DATABASE_URI = './TagsRecommenderApp/static/db/'
+    DATABASE_URI_MODEL = './TagsRecommenderApp/static/db/OVR_SVM_model.sav'
+    DATABASE_URI_VECT = './TagsRecommenderApp/static/db/vectorizer.pk'

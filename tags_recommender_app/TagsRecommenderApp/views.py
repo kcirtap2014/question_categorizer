@@ -4,12 +4,13 @@
 from flask import Flask, request, redirect, render_template
 from flask import url_for, flash, session
 import logging as lg
-import pdb
+from flask_pagedown import PageDown
+from flask_misaka import markdown
 
 app = Flask(__name__)
-
+pagedown = PageDown(app)
 app.config.from_object('config')
-#from .utils import airport_list, predict, load_data
+from .utils import run_predict
 from .forms import RecommenderForm
 
 @app.route('/', methods= ['GET','POST'])
@@ -47,22 +48,12 @@ def index2():
 @app.route('/result', methods= ['GET','POST'])
 def result():
     form = RecommenderForm()
-
     title= request.form["title"]
-    lg.warning(title)
-    pdb.set_trace()
-    body = request.form["wmd-input"]
-    wmd_preview = request.form["wmd-preview"]
-    lg.warning(body)
-    # predict
-
-    #y_pred = int(y_pred[0])
-    #rmse_score_test = int(rmse_score_test)
-
-    # written forms
-    #w_origin = origin[0]+" ("+ origin[1]+", "+origin[2] +")"
-    #w_dest = dest[0]+" ("+ dest[1]+", "+dest[2] +")"
-    #w_carrier = carrier[1]+" ("+ carrier[0]+")"
+    pagedown_text = request.form["pagedown"]
+    markdown_content = markdown(pagedown_text)
+    # run predict
+    y_pred = run_predict(title, markdown_content)
+    lg.warning(y_pred)
 
     return render_template('result.html', title = title,
-                            form=form, body=body)
+                            form=form, pagedown_text=pagedown_text)

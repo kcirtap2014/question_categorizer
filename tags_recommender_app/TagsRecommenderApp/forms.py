@@ -9,6 +9,7 @@ import datetime
 class RecommenderForm(FlaskForm):
     #pagedown = PageDownField('Ask your question...')
     title = TextField('Title', [validators.Length(min=4)])
+    pagedown = PageDownField('Body')
     submit = SubmitField("Recommend tags")
 
     def check_validity(self, df, origin_iata, dest_iata):

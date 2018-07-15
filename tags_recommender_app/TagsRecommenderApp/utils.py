@@ -1,139 +1,133 @@
 import pandas as pd
 import logging as lg
 import numpy as np
+from nltk import regexp_tokenize, pos_tag
+from nltk.corpus import stopwords
+from nltk.stem import WordNetLemmatizer
+from sklearn.externals import joblib
+import re
+
+import config as CONFIG
 import pdb
 
 #from .models import load_joblib, load_data, Airports, Origins, Dests
+class LemmaTokenizer(object):
+    """
+    tokenize text
+    """
+    def __init__(self):
+        self.wnl = WordNetLemmatizer()
+        self.stopwords = stopwords
+        self.regexp_tokenize = regexp_tokenize
 
-def airport_list():
-    origin_list = []
-    dest_list = []
+    def __call__(self, doc):
+        if pd.notnull(doc):
+            # add words to stoplist, previously punctuations have been removed,
+            # so we should do the same for the stoplist
+            # we also add the top 10 words in the stoplist, these top 10 words
+            # are found after post-processing
 
-    for airport in Origins.query.all():
-        origin_list.append([airport.iata, airport.city, airport.state])
+            doc_lower = self.lower(doc)
+            doc_punct = self.striphtmlpunct(doc_lower)
+            doc_tabs = self.striptabs(doc_punct)
 
-    for airport in Dests.query.all():
-        dest_list.append([airport.iata, airport.city, airport.state])
+            # create stoplist
+            stoplist = [self.striphtmlpunct(x)
+                        for x in self.stopwords.words('english')] + [
+                            'im', 'ive'] + [
+                            'use', 'get', 'like', 'file', 'would', 'way',
+                            'code','work', 'want', 'need']
 
-    return origin_list, dest_list
+            lemmatized = []
+            regex_tokens = self.regexp_tokenize(doc_tabs,
+                                                pattern='\w+\S+|\.\w+')
 
-def load_models(departed):
-    if departed=="True":
-        model = load_joblib('lr_past_departed.sav')
-        meta  = load_joblib('meta_past_departed.pkl')
-        score = load_joblib('score_lr_past_departed.pkl')
-        df = load_data('past_train_df_departed.csv')
-    else:
-        model = load_joblib('lr_past_.sav')
-        meta  = load_joblib('meta_past_.pkl')
-        score = load_joblib('score_lr_past_.pkl')
-        df = load_data('past_train_df_.csv')
+            for word in regex_tokens:
+                #for word, p_tags in pos_tag(regex_tokens):
+                #convert_pos_tag = convert_tag(p_tags)
+                lemmatized_word = self.wnl.lemmatize(word)
+                if lemmatized_word not in set(stoplist):
+                    lemmatized.append(lemmatized_word)
 
-    return model, meta, score, df
+            return lemmatized
 
-def predict(origin_iata, dest_iata, date, time, departed, carrier):
+        return pd.Series(doc)
 
-    model, meta, score, df = load_models(departed)
+    def striphtmlpunct(self, data):
+        # remove html tags, code unnecessary punctuations
+        # <.*?> to remove everything between <>
+        # [^\w\s+\.\-\#\+] remove punctuations except .-#+
+        # (\.{1,3})(?!\S) negative lookahead assertion: only match .{1,3} that
+        # is followed by white space
+        if pd.notnull(data):
+            p = re.compile(r'<.*?>|[^\w\s+\.\-\#\+]')
+            res = p.sub('', data)
+            pe = re.compile('(\.{1,3})(?!\S)')
 
-    input_columns = meta
-    rmse_score_test = score['rmse_score_test']
+            return pe.sub('', res)
+        return data
 
-    # prepare a new input vector
-    input_vector = np.zeros(len(input_columns))
-    time_period = 400
-    date_pd = pd.to_datetime(date, format="%Y-%m-%d")
-    time_split = time.split(":")
-    time_int = int("".join(time_split))
-    time_index = int(time_int/time_period)
+    def striptabs(self, data):
+        # remove tabs breaklines
+        p = re.compile(r'(\r\n)+|\r+|\n+|\t+/i')
+        return p.sub(' ', data)
 
-    # Monday is 1 but pandas delivers Monday = 0
-    dayofweek = date_pd.dayofweek + 1
-    dayofmonth = date_pd.day
+    def lower(self, data):
+        if pd.notnull(data):
+            return data.lower()
+        return data
 
-    time_features = [ "DEP_TIME_NIGHT",
-                      "DEP_TIME_TWILIGHT",
-                      "DEP_TIME_MORNING",
-                      "DEP_TIME_NOON",
-                      "DEP_TIME_AFTERNOON",
-                      "DEP_TIME_EVENING"]
-    delay_features = ['CARRIER_DELAY',
-                      'WEATHER_DELAY',
-                      'NAS_DELAY',
-                      'SECURITY_DELAY',
-                      'LATE_AIRCRAFT_DELAY',
-                      'DEP_DELAY',
-                      'ARR_DELAY']
+def feature_generator(X, LemmaTokenizer):
+    pdb.set_trace()
+    vect = joblib.load(CONFIG.DATABASE_URI_VECT)
 
-    # core core_features
-    input_vector[input_columns["DAY_OF_MONTH"]] = int(dayofmonth)
-    input_vector[input_columns["DAY_OF_WEEK"]] = int(dayofweek)
+    X_vect = vect.transform(X)
 
-    try:
-        input_vector[input_columns[str(time_features[time_index])]] = 1
-    except:
-        pass
+    return X_vect
 
-    try:
-        input_vector[input_columns['CARRIER_'+str(carrier)]] = 1
-    except:
-        pass
-    # check for existence of the flight
-    flight_exist = (Airports.query.filter(Airports.origin==str(origin_iata),
-                                      Airports.dest==str(dest_iata),
-                                      Airports.carrier==str(carrier)).
-                                      scalar() is not None)
+def load_model():
+    model = joblib.load(CONFIG.DATABASE_URI_MODEL)
 
-    # Prepare input vector
-    df_delay = df[(df.ORIGIN==str(origin_iata)) & (df.DEST==str(dest_iata))]
+    return model
 
-    origin_degree = (Origins.query.filter(Origins.iata==str(origin_iata)).
-                    first().degree)
-    dest_degree = (Dests.query.filter(Dests.iata==str(dest_iata)).
-                  first().degree)
+def get_best_tags(y_pred, y_pred_proba, n_tags=1):
+    """
+    assign at least one tag to y_pred that only have 0
 
-    input_vector[input_columns['ORIGIN_DEGREE']] = int.from_bytes(origin_degree,
-                                                   byteorder='little')
-    input_vector[input_columns['DEST_DEGREE']] = int.from_bytes(dest_degree,
-                                                   byteorder='little')
+    Parameters:
+    -----------
+    y_pred: np array
+        multilabel predicted y values
 
-    for feature in delay_features:
-        #if df_delay is empty, we will imputate values with the median of
-        # df[feature]
-        if df_delay.empty:
-            input_vector[input_columns['MEDIAN_'+ feature]] = df['MEDIAN_'+ feature].median()
-            input_vector[input_columns['MEAN_'+ feature]] = df['MEAN_'+ feature].median()
-            input_vector[input_columns['Q0_'+ feature]] = df['Q0_'+ feature].median()
-            input_vector[input_columns['Q1_'+ feature]] = df['Q1_'+ feature].median()
-            input_vector[input_columns['Q3_'+ feature]] = df['Q3_'+ feature].median()
-            input_vector[input_columns['Q95_'+ feature]] = df['Q95_'+ feature].median()
+    y_pred_proba: np array
+        multilabel predicted proba y values
 
-            if departed=="True" and feature != "ARR_DELAY":
-                input_vector[input_columns[feature]] = df[feature].median()
+    n_tags: int
+        number of non-zero tags
 
-        else:
-            input_vector[input_columns['MEDIAN_'+ feature]] = df_delay['MEDIAN_'+ feature]
-            input_vector[input_columns['MEAN_'+ feature]] = df_delay['MEAN_'+ feature]
-            input_vector[input_columns['Q0_'+ feature]] = df_delay['Q0_'+ feature]
-            input_vector[input_columns['Q1_'+ feature]] = df_delay['Q1_'+ feature]
-            input_vector[input_columns['Q3_'+ feature]] = df_delay['Q3_'+ feature]
-            input_vector[input_columns['Q95_'+ feature]] = df_delay['Q95_'+ feature]
+    Returns:
+    --------
+    y_pred: np array
+        new y_pred for evaluation purpose
+    """
+    y_pred_copy = y_pred.copy()
+    idx_y_pred_zeros  = np.where(y_pred_copy.sum(axis=1)==0)[0]
+    best_tags = np.argsort(
+        y_pred_proba[idx_y_pred_zeros])[:, :-(n_tags + 1):-1]
 
-            if departed=="True" and feature != "ARR_DELAY":
-                input_vector[input_columns[feature]] = df_delay[feature]
+    for i in range(len(idx_y_pred_zeros)):
+        y_pred_copy[idx_y_pred_zeros[i], best_tags[i]] = 1
 
-    # prediction
-    y_pred = model.predict(input_vector.reshape(1, -1))
+    return y_pred_copy
 
-    # delay threshold
-    y_delay = y_pred + rmse_score_test
+def run_predict(title, body):
 
-    if departed=="True":
-        #we consider the threshold to be 15 in the case of departed flight
-        y_delay_thr = 15.
-    else:
-        y_delay_thr = 30.
+    X = title + body
+    X_vect = feature_generator(X, LemmaTokenizer)
+    pdb.set_trace()
+    model = load_model()
+    y_pred = model.predict(X_vect)
+    y_pred_proba  = model.decision_function(X_vect)
+    y_pred_new = get_best_tags(y_pred_svm, y_pred_proba, n_tags=2)
 
-    y_delayed = y_delay > y_delay_thr
-
-    return y_pred, rmse_score_test, flight_exist, y_delayed
-    #prediction = model.predict()
+    return y_pred_new
