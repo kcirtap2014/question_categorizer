@@ -3,13 +3,10 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <link href="{{url_for('static', filename='css/bootstrap/bootstrap.min.css.map')}}" rel="stylesheet" type="text/css" />
     <link href="https://fonts.googleapis.com/css?family=PT+Serif" rel="stylesheet">
-    <link href="//cdn.rawgit.com/balpha/pagedown/master/demo/browser/demo.css" rel="stylesheet" />
     <link href="{{url_for('static', filename='css/custom.css')}}" rel="stylesheet"  />
     <script src = "{{url_for('static', filename='js/bootstrap/bootstrap.min.js.map')}}"></script>
     <script src = "{{url_for('static', filename='js/jquery/jquery.min.js')}}"></script>
-    <script src="//cdnjs.cloudflare.com/ajax/libs/pagedown/1.0/Markdown.Converter.js"></script>
-    <script src="//cdnjs.cloudflare.com/ajax/libs/pagedown/1.0/Markdown.Editor.js"></script>
-    <script src="//cdnjs.cloudflare.com/ajax/libs/pagedown/1.0/Markdown.Sanitizer.js"></script>
+    <link rel="icon" href="{{url_for('static', filename='image/favicon_so.png')}}">
     {{ pagedown.include_pagedown() }}
-    <title>{% block titre %}{{title}}{% endblock %}</title>
+    <title>{% block titre %}{{website_title}}{% endblock %}</title>
 </head>

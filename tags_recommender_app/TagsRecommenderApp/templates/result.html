@@ -13,9 +13,14 @@
             </div>
 
             <textarea disabled id='body_result'>{{pagedown_text}}</textarea>
-            <br>
-            <a> Recommended tags </a>
 
+            <div class ="tags"> Recommended tags </div>
+
+            <div class ="tags">
+            {% for tag in rec_tags: %}
+                <button class='btn' type="button">{{tag}}</button>
+            {% endfor %}
+            </div>
          </fieldset>
       </form>
      </div>

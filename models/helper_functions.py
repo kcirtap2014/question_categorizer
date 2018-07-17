@@ -18,6 +18,8 @@ from sklearn.pipeline import Pipeline
 from collections import defaultdict, Counter
 from operator import itemgetter
 from scipy.stats import entropy
+from sklearn.calibration import CalibratedClassifierCV
+
 import pdb
 
 class ModelTrainer(object):
@@ -140,7 +142,7 @@ class CrossValidation(object):
                 self.pipeline.fit(X_train_train, y_train_train)
 
                 y_pred = self.pipeline.predict(X_train_test)
-                y_pred_proba = self.pipeline.decision_function(X_train_test)
+                y_pred_proba = self.pipeline.predict_proba(X_train_test)
                 y_pred_new = get_best_tags(y_pred, y_pred_proba, n_tags = self.n_tags)
                 cv_scores[idx].append(evaluate(y_train_test, y_pred_new,
                                                binarizer=self.binarizer,
@@ -935,7 +937,7 @@ def evaluate(y_true,
         # normalize accuracy to the number of samples
         return f1 / y_true.shape[0]
 
-def get_best_tags(y_pred, y_pred_proba, n_tags=1):
+def get_best_tags(y_pred, y_pred_proba, n_tags=2):
     """
     assign at least one tag to y_pred that only have 0
 
@@ -956,7 +958,7 @@ def get_best_tags(y_pred, y_pred_proba, n_tags=1):
         new y_pred for evaluation purpose
     """
     y_pred_copy = y_pred.copy()
-    idx_y_pred_zeros  = np.where(y_pred_copy.sum(axis=1)==0)[0]
+    idx_y_pred_zeros  = np.where(y_pred_copy.sum(axis=1)<n_tags)[0]
     best_tags = np.argsort(
         y_pred_proba[idx_y_pred_zeros])[:, :-(n_tags + 1):-1]
 

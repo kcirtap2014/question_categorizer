@@ -1,7 +1,7 @@
 form {
     margin: 0 auto;
     width: 800px;
-    height: 600px;
+    height: 590px;
     font-size: 20px;
     text-align: justify;
     font-family: 'PT Serif', serif;
@@ -15,30 +15,18 @@ textarea#flask-pagedown-pagedown {
     height: 400px;
 }
 
-.wmd-button > span {
-    background-image:
-          url('//cdn.rawgit.com/derobins/wmd/master/images/wmd-buttons.png');
-    background-repeat: no-repeat;
-    background-position: 0px 0px;
-    width: 20px;
-    height: 20px;
-    display: -webkit-box;
+/* Style the active class, and buttons on mouse-over */
+.btn:focus, .btn:hover {
+    background-color: #666;
+    color: white;
 }
 
-.wmd-input {
-    height: 300px;
-    width: 100%;
-    background-color: #ffffff;
-    border: 1.5px solid black;
-    font-size: 20px;
+.tags {
+    margin-top: 10px;
 }
 
-.wmd-spacer {
-    width: 2px;
-    height: 20px;
-    margin-left: 14px;
-    position: absolute;
-    background-color: black;
+button.btn {
+    margin-right: 10px;
 }
 
 img {
@@ -48,6 +36,12 @@ img {
 
 fieldset {
     border-style: hidden;
+}
+
+button {
+    font-size: 24px;
+    border-color: black;
+    border-width: 1.5px;
 }
 
 select {
@@ -102,7 +96,6 @@ input[type="checkbox"] {
 
 input#submit {
     margin: 0 auto;
-    margin-top: 10px;
     border-width: 1.5px;
     font-size: 20px;
     font-weight: bold;

@@ -8,9 +8,8 @@
       <form action="{{url_for("result")}}" method = "POST">
          <fieldset>
             <legend > <img src="{{url_for('static', filename='image/so-logo.png')}}" alt="Stack Overflow"> </legend>
-            <div id="title" class="title">{{ form.title(placeholder="Title goes here...") }}</div>
-
             {{ form.hidden_tag() }}
+            <div id="title" class="title">{{ form.title(placeholder="Title goes here...") }}</div>
             <div class="container row" >
 
                     <div id="box" class="left-half">
