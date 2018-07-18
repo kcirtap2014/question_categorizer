@@ -1,7 +1,9 @@
 db/
 *.pyc/
-models/__pycache__/
-models/.ipynb_checkpoints/
+tags_recommender_app/*
+LemmaTokenizer/*
+models/__pycache__/*
+models/.ipynb_checkpoints/*
 models/G_tags.html
 models/G_tags.js
 models/G_tags.json

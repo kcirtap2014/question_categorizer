@@ -17,6 +17,9 @@ import math
 from sklearn.pipeline import Pipeline
 from collections import defaultdict, Counter
 from operator import itemgetter
+from scipy.stats import entropy
+from sklearn.calibration import CalibratedClassifierCV
+
 import pdb
 
 class ModelTrainer(object):
@@ -139,7 +142,7 @@ class CrossValidation(object):
                 self.pipeline.fit(X_train_train, y_train_train)
 
                 y_pred = self.pipeline.predict(X_train_test)
-                y_pred_proba = self.pipeline.decision_function(X_train_test)
+                y_pred_proba = self.pipeline.predict_proba(X_train_test)
                 y_pred_new = get_best_tags(y_pred, y_pred_proba, n_tags = self.n_tags)
                 cv_scores[idx].append(evaluate(y_train_test, y_pred_new,
                                                binarizer=self.binarizer,
@@ -934,7 +937,7 @@ def evaluate(y_true,
         # normalize accuracy to the number of samples
         return f1 / y_true.shape[0]
 
-def get_best_tags(y_pred, y_pred_proba, n_tags=1):
+def get_best_tags(y_pred, y_pred_proba, n_tags=2):
     """
     assign at least one tag to y_pred that only have 0
 
@@ -955,7 +958,7 @@ def get_best_tags(y_pred, y_pred_proba, n_tags=1):
         new y_pred for evaluation purpose
     """
     y_pred_copy = y_pred.copy()
-    idx_y_pred_zeros  = np.where(y_pred_copy.sum(axis=1)==0)[0]
+    idx_y_pred_zeros  = np.where(y_pred_copy.sum(axis=1)<n_tags)[0]
     best_tags = np.argsort(
         y_pred_proba[idx_y_pred_zeros])[:, :-(n_tags + 1):-1]
 
@@ -1009,7 +1012,7 @@ def H_entropy(x):
     entropy: float
     """
 
-    return -sum(x*np.log2(x))
+    return -sum(x*np.log(np.ma.array(x)))
 
 
 def rpc_score(perplexity, topic_num):
@@ -1029,7 +1032,94 @@ def rpc_score(perplexity, topic_num):
     rpc: np arrays
         rate of perplexity change
     """
-    shape = np.shape(perplexity)
-    t = np.repeat(topic_num, shape[1], axis=-1).reshape(shape)
 
-    return np.absolute((perplexity[1:] - perplexity[:-1]) / (t[1:] - t[:-1]))
+    return np.absolute((perplexity[1:] - perplexity[:-1]) / (topic_num[1:] - topic_num[:-1]))
+
+def print_top_words(model, feature_names, n_top_words):
+    """
+    print top words
+
+    Parameters:
+    -----------
+    model: sciktlearn decomposition model
+
+    feature_names: output of tfidf or count vectorizer feature names
+
+    n_top_words: int
+        number of words to be printed
+    """
+
+    for topic_idx, topic in enumerate(model.components_):
+        sorted_data = sorted(
+            list(zip(topic, feature_names)),
+            key=itemgetter(0),
+            reverse=True)
+        message = "Topic #%d: " % topic_idx
+        message += " ".join([i[1] for i in sorted_data[:n_top_words]])
+        print(message)
+    print()
+
+def topic_name_attribution(df_top_words, tags_key):
+    """
+    attribute topic names to each topic
+    """
+    words = [[] for i in range(df_top_words.shape[0])]
+    Hs = dict()
+    n_top = 100
+    num_keep_words = 10
+
+    for k in df_top_words.index:
+        df_top_words_sorted = df_top_words.loc[k].sort_values(ascending=False)
+        Hs[k] = entropy(df_top_words_sorted.values)
+
+        for word in df_top_words_sorted[:n_top].index:
+
+            if word in set(tags_key):
+                words[k].append(word)
+
+        # default values
+        if not words[k]:
+            words[k] = ['unknown']
+            #df_top_words_sorted[:num_keep_words].index.tolist()
+
+    index_Hs_neg = [k for k, v in Hs.items() if (v < np.max(list(Hs.values())) and v>0.)]
+    dict_topicnames = defaultdict(list)
+    topicnames = []
+
+    # arrays for significant topics only
+    for idx, word in enumerate(np.array(words)[index_Hs_neg]):
+        if len(word)>2:
+            word = word[:2]
+
+        groupword = ','.join(word)
+        dict_topicnames[index_Hs_neg[idx]].append(groupword)
+        topicnames.append(groupword)
+
+    return dict_topicnames, topicnames
+
+def no_tag_percentage_score(y, binarizer):
+    """
+    return no_tag_percentage_score
+
+    Parameters:
+    -----------
+    y: np array
+        input
+
+    binarize: multilabel binarizer
+
+    Returns:
+    --------
+    float
+        no tag percentage score
+    """
+    count=0
+
+    for index in range(len(y)):
+        y_temp = y[index].reshape(1, -1)
+        y_tags = binarizer.inverse_transform(y_temp)
+
+        if y_tags[0][0]=="No tags":
+            count+=1
+
+    return float(count)/len(y)
