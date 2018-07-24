@@ -1,9 +1,9 @@
 import numpy as np
 import pandas as pd
 import scipy.stats as stats
+import matplotlib.pyplot as plt
 from matplotlib import cm
 from nltk import word_tokenize, FreqDist
-import matplotlib.pyplot as plt
 from matplotlib.path import Path
 from matplotlib.spines import Spine
 from matplotlib.projections.polar import PolarAxes
@@ -19,6 +19,8 @@ from collections import defaultdict, Counter
 from operator import itemgetter
 from scipy.stats import entropy
 from sklearn.calibration import CalibratedClassifierCV
+import networkx as nx
+from networkx import NetworkXException
 
 import pdb
 
@@ -813,9 +815,16 @@ def check_similar_tags(a, b, G_tags):
     boolean
         true if tag a and tag b belong to the same group
     """
+    # throw errors in cases where element is not in the graph
+    try:
+        a_edge_list = list(nx.descendants(G_tags, a))
+    except NetworkXException:
+        a_edge_list = []
 
-    a_edge_list = [i[1] for i in G_tags.edges(a)]
-    b_edge_list = [i[1] for i in G_tags.edges(b)]
+    try:
+        b_edge_list = list(nx.descendants(G_tags, b))
+    except NetworkXException:
+        b_edge_list = []
 
     if (b in a_edge_list) and (a in b_edge_list):
         return True
@@ -882,7 +891,7 @@ def evaluate(y_true,
         y_pred_temp = y_pred[index].reshape(1, -1)
         y_true_temp = y_true[index].reshape(1, -1)
 
-        y_true_tag = binarizer.y_pred_proba_svm_tfidf(y_true_temp)
+        y_true_tag = binarizer.inverse_transform(y_true_temp)
         y_pred_tag = binarizer.inverse_transform(y_pred_temp)
 
         index_true = np.where(y_true_temp.flatten() == 1)[0]
@@ -909,7 +918,7 @@ def evaluate(y_true,
 
         for i in range(len(y_true_tag_dedup)):
             for j in range(len(y_pred_tag_dedup)):
-                if check_similar_tags(y_true_tag_dedup[i], y_pred_tag_dedup[j],
+                if check_similar_tags(y_true_tag_dedup[0][i], y_pred_tag_dedup[0][j],
                                       G_tags):
                     y_true_temp[0, union_index[i]] = 1
                     y_pred_temp[0, union_index[j]] = 1
@@ -958,7 +967,8 @@ def get_best_tags(y_pred, y_pred_proba, n_tags=2):
         new y_pred for evaluation purpose
     """
     y_pred_copy = y_pred.copy()
-    idx_y_pred_zeros  = np.where(y_pred_copy.sum(axis=1)<n_tags)[0]
+    idx_y_pred_zeros  = np.where(y_pred_copy.sum(axis=1)==0)[0]
+    #idx_y_pred_zeros  = np.where(y_pred_copy.sum(axis=1)<n_tags)[0]
     best_tags = np.argsort(
         y_pred_proba[idx_y_pred_zeros])[:, :-(n_tags + 1):-1]
 
@@ -1096,6 +1106,29 @@ def topic_name_attribution(df_top_words, tags_key):
         topicnames.append(groupword)
 
     return dict_topicnames, topicnames
+
+def potential_tags(data, threshold=0.0, n_tags = 3):
+    """
+    attribute potential tags to each document
+    """
+    #pdb.set_trace()
+    sorted_data = sorted(data.items(), key=itemgetter(1), reverse=True)
+    tags_temp = [k.split(',') for k, v in sorted_data if v > threshold]
+
+    tags_temp = [item for sublist in tags_temp for item in sublist]
+    # we set 5 tags maximum
+    if len(tags_temp) > n_tags:
+        tags_temp = tags_temp[:n_tags]
+
+    # if no tags have a value above the threshold, attribute no tags,
+    # this is going to be useful for the evaluation
+    if not tags_temp:
+        tags_temp = ["No tags"]  #[k.split(',') for k, v in sorted_data][0]
+
+    # set is used to avoid redundancy
+    tags = list(set(tags_temp))
+
+    return tags
 
 def no_tag_percentage_score(y, binarizer):
     """
