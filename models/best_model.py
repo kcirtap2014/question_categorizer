@@ -9,6 +9,7 @@ from sklearn.svm import SVC
 from sklearn.pipeline import Pipeline
 from sklearn.calibration import CalibratedClassifierCV
 from sklearn.decomposition import NMF
+import networkx as nx
 
 from helper_functions import (evaluate, get_best_tags, potential_tags,
                               topic_name_attribution)
@@ -21,12 +22,9 @@ class Model(object):
 
     """
 
-    def __init__(self, params_model, model, params_vectorizer,
-                 vectorizer, binarizer, G_tags):
+    def __init__(self, model, vectorizer, binarizer, G_tags):
         self.model = model
-        self.params_vectorizer = params_vectorizer
         self.vectorizer = vectorizer
-        self.params_model = params_model
         self.binarizer = binarizer
         self.G_tags = G_tags
 
@@ -35,7 +33,7 @@ class Model(object):
         create pipeline
         """
         self.pipeline = Pipeline([
-                        ('vect', self.vectorizer(**self.params_vectorizer));
+                        ('vect', self.vectorizer(**self.params_vectorizer))
                         ('clf', self.vectorizer(**self.params_model))])
 
     def fit(self, X, y):

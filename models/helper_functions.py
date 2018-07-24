@@ -1,9 +1,9 @@
 import numpy as np
 import pandas as pd
 import scipy.stats as stats
+import matplotlib.pyplot as plt
 from matplotlib import cm
 from nltk import word_tokenize, FreqDist
-import matplotlib.pyplot as plt
 from matplotlib.path import Path
 from matplotlib.spines import Spine
 from matplotlib.projections.polar import PolarAxes
