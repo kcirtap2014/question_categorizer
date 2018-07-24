@@ -32,9 +32,8 @@ class Model(object):
         """
         create pipeline
         """
-        self.pipeline = Pipeline([
-                        ('vect', self.vectorizer(**self.params_vectorizer))
-                        ('clf', self.vectorizer(**self.params_model))])
+        self.pipeline = Pipeline([('vect', self.vectorizer),
+                                  ('clf', self.model)])
 
     def fit(self, X, y):
         """
@@ -64,7 +63,7 @@ class Model(object):
         y: sparse matrix (2D)
             predicted values
         """
-        y_pred = self.pipeline(X)
+        y_pred = self.pipeline.predict(X)
         y_pred_proba = self.pipeline.predict_proba(X)
         y_pred_new = get_best_tags(y_pred, y_pred_proba)
 
@@ -82,11 +81,11 @@ class Model(object):
         y_pred: 2d arrays
             predicted labels
         """
-        score_val = evaluate(y_test, y_pred,
+        score_val = evaluate(y_true, y_pred,
                              self.binarizer, self.G_tags,
                              l_print_errors=False, l_deduplication = True)
 
-        print('Test score: {0:.2f}'.format(score_svm))
+        print('Test score: {0:.2f}'.format(score_val))
 
     def save(self, filename_vect, filename_clf):
         """
@@ -102,7 +101,7 @@ class Model(object):
         """
         pickle.dump(self.pipeline.named_steps["vect"], open(filename_vect, 'wb'))
         print("Saved vectorizer to %s" %filename_vect)
-        pickle.dump(self.pipeline.named_steps["clf"], open(filename_SVM, 'wb'))
+        pickle.dump(self.pipeline.named_steps["clf"], open(filename_clf, 'wb'))
         print("Saved model to %s" %filename_clf)
 
     def save_topics(self, filename_topics):
@@ -116,7 +115,7 @@ class Model(object):
 
         """
         pickle.dump((self.dict_topicnames, self.topicnames),
-                    open(filename_topicnames, 'wb'))
+                    open(filename_topics, 'wb'))
         print("Saved model to %s" %filename_topics)
 
     def attribute_topic_names(self):
@@ -124,12 +123,12 @@ class Model(object):
         attribute topics names
         """
         feat_names = self.pipeline.named_steps["vect"].get_feature_names()
-        df_top_words_nmf_kl = pd.DataFrame(
+        df_top_words = pd.DataFrame(
                                 self.pipeline.named_steps["clf"].components_,
                                 columns=feat_names)
         tags_keys = self.binarizer.classes_
         self.dict_topicnames, self.topicnames = topic_name_attribution(
-                                                df_top_words_nmf_kl, tags_keys)
+                                                df_top_words, tags_keys)
 
     def attribute_topic_documents(self, X):
         """
@@ -154,6 +153,7 @@ class Model(object):
 
 if __name__ == '__main__':
     print("Loading files:")
+
     X_train = pd.read_csv("X_train.csv", index_col = "Id")
     X_train_all = pd.read_csv("X_train_nmfkl.csv", index_col = "Id")
     X_train_nmfkl = X_train_all[X_train_all['0'].notnull()]
@@ -186,12 +186,16 @@ if __name__ == '__main__':
     tfidf_vectorizer = TfidfVectorizer(**params_vectorizer_tfidf)
     svm_model = OneVsRestClassifier(CalibratedClassifierCV(SVC(**params_model_svm)))
     svm_clf = Model(svm_model, tfidf_vectorizer, lb, G_tags)
-    print("Fitting the SVM model "
-      "tf-idf features...")
-    svm_clf.fit(X_train, y_train)
-    y_pred_svm = svm_clf.predict(X_test)
+
+    print("Fitting the SVM model tf-idf features...")
+    svm_clf.create_pipeline()
+    svm_clf.fit(X_train['0'], y_train)
+
+    # prediction
+    y_pred_svm = svm_clf.predict(X_test['0'])
     svm_clf.f1_score(y_test, y_pred_svm)
 
+    # save file
     filename_vect = file_dir + "vectorizer_svm.pk"
     filename_clf = file_dir + "OVR_SVM_model.sav"
     pdb.set_trace()
@@ -222,12 +226,16 @@ if __name__ == '__main__':
     count_vectorizer = CountVectorizer(**params_vectorizer_count)
     clf_nmf = NMF(**params_nmf)
     nmf_clf = Model(clf_nmf, count_vectorizer, lb, G_tags)
+
     print("Fitting the NMF model (KL divergence) with "
       "count features, num_topics =%d..." % n_topics)
+    nmf_clf.create_pipeline()
     nmf_clf.fit(X_train_nmfkl['0'], None)
     nmf_clf.attribute_topic_names()
     dominant_topic = nmf_clf.attribute_topic_documents(X_train_nmfkl['0'])
     y_pred_nmf = mlb.fit_transform(dominant_topic.loc[index_y_all])
+
+    # evaluate model
     nmf_clf.f1_score(y_all, y_pred_nmf)
     y_pred_nmf_comp = mlb.fit_transform(dominant_topic)
     no_tag_score_nmfkl = no_tag_percentage_score(y_pred_nmf_comp, mlb)
