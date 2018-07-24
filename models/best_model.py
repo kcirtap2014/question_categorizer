@@ -10,9 +10,10 @@ from sklearn.pipeline import Pipeline
 from sklearn.calibration import CalibratedClassifierCV
 from sklearn.decomposition import NMF
 import networkx as nx
+import os
 
 from helper_functions import (evaluate, get_best_tags, potential_tags,
-                              topic_name_attribution)
+                              topic_name_attribution, no_tag_percentage_score)
 import pdb
 
 class Model(object):
@@ -143,7 +144,8 @@ class Model(object):
         dominant_topics: arrays
             dominant_topics for each entry
         """
-        output = self.pipeline.transform(X)
+        index_topicnames = list(self.dict_topicnames.keys())
+        output = self.pipeline.transform(X)[:,index_topicnames]
         df_document_topic = pd.DataFrame(np.round(output, 2),
                                          columns=self.topicnames,
                                          index=X.index)
@@ -152,28 +154,27 @@ class Model(object):
         return dominant_topic
 
 if __name__ == '__main__':
-    print("Loading files:")
-
-    X_train = pd.read_csv("X_train.csv", index_col = "Id")
-    X_train_all = pd.read_csv("X_train_nmfkl.csv", index_col = "Id")
+    print("Loading files")
+    cur_dir = os.getcwd()
+    X_train = pd.read_csv(cur_dir + "/load_files/X_train.csv", index_col = "Id")
+    X_train_all = pd.read_csv(cur_dir + "/load_files/X_train_nmfkl.csv", index_col = "Id")
     X_train_nmfkl = X_train_all[X_train_all['0'].notnull()]
-    X_test = pd.read_csv("X_test.csv", index_col = "Id")
-    index_y_all = np.load("index_y_true_nmf.npy")
-    y_all = np.load("y_true_nmf.npy")
-    y_train = np.load("y_train.npy")
-    y_test = np.load("y_test.npy")
+    X_test = pd.read_csv(cur_dir + "/load_files/X_test.csv", index_col = "Id")
+    index_y_all = np.load(cur_dir + "/load_files/index_y_true_nmf.npy")
+    y_all = np.load(cur_dir + "/load_files/y_true_nmf.npy")
+    y_train = np.load(cur_dir + "/load_files/y_train.npy")
+    y_test = np.load(cur_dir + "/load_files/y_test.npy")
 
     # load binarizer
-    lb = joblib.load("binarizer.pk")
-    mlb = joblib.load("new_binarizer.pk")
-
-    # file directory
-    file_dir = "/Users/pmlee/Documents/CAPGemini_OpenClassroom/" + \
-               "OpenClassrooms_Patrick_Lee/Assignment5/question_categorizer/" + \
-               "tags_recommender_app/TagsRecommenderApp/static/db/"
+    lb = joblib.load(cur_dir + "/load_files/binarizer.pk")
+    mlb = joblib.load(cur_dir + "/load_files/new_binarizer.pk")
 
     # load networkx graph
-    G_tags = nx.read_gpickle("G_tags.gpickle")
+    G_tags = nx.read_gpickle(cur_dir + "/load_files/G_tags.gpickle")
+
+    # file directory for saving
+    file_dir = cur_dir + "/deploy_files/"
+               #"tags_recommender_app/TagsRecommenderApp/static/db/"
 
     print("Training SVM model")
     params_vectorizer_tfidf = {
@@ -198,7 +199,6 @@ if __name__ == '__main__':
     # save file
     filename_vect = file_dir + "vectorizer_svm.pk"
     filename_clf = file_dir + "OVR_SVM_model.sav"
-    pdb.set_trace()
     svm_clf.save(filename_vect, filename_clf)
 
     print("Training PLSA model")
@@ -225,7 +225,7 @@ if __name__ == '__main__':
 
     count_vectorizer = CountVectorizer(**params_vectorizer_count)
     clf_nmf = NMF(**params_nmf)
-    nmf_clf = Model(clf_nmf, count_vectorizer, lb, G_tags)
+    nmf_clf = Model(clf_nmf, count_vectorizer, mlb, G_tags)
 
     print("Fitting the NMF model (KL divergence) with "
       "count features, num_topics =%d..." % n_topics)
@@ -244,6 +244,5 @@ if __name__ == '__main__':
     filename_vect = file_dir + "vectorizer_plsa.pk"
     filename_clf = file_dir + "PLSA_model.sav"
     filename_topics = file_dir + "topicnames.pk"
-    pdb.set_trace()
     nmf_clf.save(filename_vect, filename_clf)
     nmf_clf.save_topics(filename_topics)
