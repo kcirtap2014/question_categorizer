@@ -188,6 +188,8 @@ if __name__ == '__main__':
     tfidf_vectorizer = TfidfVectorizer(**params_vectorizer_tfidf)
     svm_model = OneVsRestClassifier(CalibratedClassifierCV(SVC(**params_model_svm)))
     svm_clf = Model(svm_model, tfidf_vectorizer, lb, G_tags)
+    print("Fitting the SVM model "
+      "tf-idf features...")
     svm_clf.fit(X_train, y_train)
     y_pred_svm = svm_clf.predict(X_test)
     svm_clf.f1_score(y_test, y_pred_svm)
@@ -222,3 +224,20 @@ if __name__ == '__main__':
     count_vectorizer = CountVectorizer(**params_vectorizer_count)
     clf_nmf = NMF(**params_nmf)
     nmf_clf = Model(clf_nmf, count_vectorizer, lb, G_tags)
+    print("Fitting the NMF model (KL divergence) with "
+      "count features, num_topics =%d..." % n_topics)
+    nmf_clf.fit(X_train_nmfkl['0'], None)
+    nmf_clf.attribute_topic_names()
+    dominant_topic = nmf_clf.attribute_topic_documents(X_train_nmfkl['0'])
+    y_pred_nmf = mlb.fit_transform(dominant_topic.loc[index_y_all])
+    nmf_clf.f1_score(y_all, y_pred_nmf)
+    y_pred_nmf_comp = mlb.fit_transform(dominant_topic)
+    no_tag_score_nmfkl = no_tag_percentage_score(y_pred_nmf_comp, mlb)
+    print('No tag score: {0:.2f}'.format(no_tag_score_nmfkl))
+
+    filename_vect = file_dir + "vectorizer_plsa.pk"
+    filename_clf = file_dir + "PLSA_model.sav"
+    filename_topics = file_dir + "topicnames.pk"
+    pdb.set_trace()
+    nmf_clf.save(filename_vect, filename_clf)
+    nmf_clf.save_topics(filename_topics)
