@@ -119,7 +119,7 @@ class Model(object):
                     open(filename_topics, 'wb'))
         print("Saved model to %s" %filename_topics)
 
-    def attribute_topic_names(self):
+    def attribute_topic_names(self, binarizer):
         """
         attribute topics names
         """
@@ -127,7 +127,7 @@ class Model(object):
         df_top_words = pd.DataFrame(
                                 self.pipeline.named_steps["clf"].components_,
                                 columns=feat_names)
-        tags_keys = self.binarizer.classes_
+        tags_keys = binarizer.classes_
         self.dict_topicnames, self.topicnames = topic_name_attribution(
                                                 df_top_words, tags_keys)
 
@@ -231,7 +231,7 @@ if __name__ == '__main__':
       "count features, num_topics =%d..." % n_topics)
     nmf_clf.create_pipeline()
     nmf_clf.fit(X_train_nmfkl['0'], None)
-    nmf_clf.attribute_topic_names()
+    nmf_clf.attribute_topic_names(lb)
     dominant_topic = nmf_clf.attribute_topic_documents(X_train_nmfkl['0'])
     y_pred_nmf = mlb.fit_transform(dominant_topic.loc[index_y_all])
 
